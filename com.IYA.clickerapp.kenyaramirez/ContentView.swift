@@ -85,7 +85,7 @@ struct ContentView: View {
                             }
 
                             // Particle burst overlay (centered on the tool), scale-aware
-                            ParticleBurst(trigger: burstTrigger, scale: iconSize / 72)
+                            ParticleBurst(trigger: burstTrigger, scale: iconSize / 120)
                                 .allowsHitTesting(false)
                         }
                         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
@@ -269,16 +269,17 @@ private struct ToolIcon: View {
     }
 }
 
-// MARK: - Particle system (dust + sparks), scale-aware
 
+// MARK: - Particle system (dust + sparks), scale-aware — MORE PARTICLES
 private struct ParticleBurst: View {
     let trigger: Int
     var scale: CGFloat = 1.0
     @State private var particles: [Particle] = []
 
-    // Tuning
-    private let countDust = 16
-    private let countSparks = 10
+    // Increased counts
+    private let countDust = 40    // was 16
+    private let countSparks = 24  // was 10
+
     private let dustLifetime: ClosedRange<Double> = 0.6...1.0
     private let sparkLifetime: ClosedRange<Double> = 0.25...0.45
 
@@ -286,14 +287,13 @@ private struct ParticleBurst: View {
         TimelineView(.animation) { context in
             Canvas { ctx, size in
                 let now = context.date
-
                 // Cull expired
                 particles.removeAll { now.timeIntervalSince($0.birth) > $0.lifetime }
 
                 // Draw
                 for p in particles {
                     let age = now.timeIntervalSince(p.birth)
-                    let t = max(0, min(1, age / p.lifetime)) // 0..1
+                    let t = max(0, min(1, age / p.lifetime))
                     let distance = p.speed * CGFloat(age)
                     let dx = cos(p.angle) * distance
                     let dy = sin(p.angle) * distance
@@ -301,12 +301,11 @@ private struct ParticleBurst: View {
                     var x = size.width / 2 + dx
                     var y = size.height / 2 + dy
 
-                    // Gravity for dust
+                    // Gravity-ish for dust
                     if p.color != .yellow {
                         y += distance * 0.35
                     }
 
-                    // Fade + shrink
                     let alpha = (1 - t) * 0.9
                     let radius = max(0.5, p.startRadius * (1 - t))
 
@@ -315,7 +314,6 @@ private struct ParticleBurst: View {
                     ctx.fill(Path(ellipseIn: rect), with: .color(p.color))
                 }
             }
-            // when trigger changes, emit new particles
             .onChange(of: trigger) { _ in
                 emitBurst()
             }
@@ -328,15 +326,15 @@ private struct ParticleBurst: View {
 
         var newParticles: [Particle] = []
 
-        // Dust (brown/gray) — scale radius/speed
+        // Dust (brown/gray) — scaled radius/speed
         for _ in 0..<countDust {
             newParticles.append(
                 Particle(
                     birth: now,
                     lifetime: Double.random(in: dustLifetime),
-                    angle: CGFloat.random(in: (.pi * 0.9)...(.pi * 2.1)), // mainly sideways/outward
-                    speed: CGFloat.random(in: 40...110) * s,          // scaled
-                    startRadius: CGFloat.random(in: 3...8) * s,       // scaled
+                    angle: CGFloat.random(in: (.pi * 0.9)...(.pi * 2.1)), // mainly lateral
+                    speed: CGFloat.random(in: 40...110) * s,
+                    startRadius: CGFloat.random(in: 3...8) * s,
                     color: Color(red: 0.46, green: 0.38, blue: 0.30).opacity(0.9)
                 )
             )
@@ -349,8 +347,8 @@ private struct ParticleBurst: View {
                     birth: now,
                     lifetime: Double.random(in: sparkLifetime),
                     angle: CGFloat.random(in: 0...(2 * .pi)),
-                    speed: CGFloat.random(in: 120...220) * s,         // scaled
-                    startRadius: CGFloat.random(in: 1.5...3.0) * s,   // scaled
+                    speed: CGFloat.random(in: 120...220) * s,
+                    startRadius: CGFloat.random(in: 1.5...3.0) * s,
                     color: .yellow
                 )
             )
@@ -359,6 +357,7 @@ private struct ParticleBurst: View {
         particles.append(contentsOf: newParticles)
     }
 }
+
 
 // MARK: - Awards List
 
